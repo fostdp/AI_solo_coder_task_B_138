@@ -35,6 +35,24 @@ function populateDropdown(pavementList) {
     }
 }
 
+function populatePavementChecklist(pavementList) {
+    const container = document.getElementById('pavement-checklist');
+    if (!container) return;
+    container.innerHTML = '';
+    for (const p of pavementList) {
+        const label = document.createElement('label');
+        label.className = 'check-item';
+        const style = p.pavementStyle || 'ICE_CRACK';
+        const era = p.era || 'ANCIENT';
+        label.innerHTML = `
+            <input type="checkbox" class="pavement-check" value="${p.id}">
+            <span>${p.name || p.id}</span>
+            <span class="check-meta">${style} / ${era}</span>
+        `;
+        container.appendChild(label);
+    }
+}
+
 function populateSensorTable(data) {
     const tbody = document.querySelector('#sensor-table tbody');
     if (!tbody) return;
@@ -152,9 +170,8 @@ async function selectPavement(id) {
             if (pattern && typeof pattern === 'string') {
                 try { pattern = JSON.parse(pattern); } catch (e) { pattern = null; }
             }
-            if (pattern) {
-                scene.generateIceCracks(pattern);
-            }
+            const style = pavement.pavementStyle || 'ICE_CRACK';
+            scene.loadCrackStyle(style, pattern);
         }
 
         loadAlerts();
@@ -250,12 +267,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         pavements = await api.fetchPavements();
         populateDropdown(pavements);
+        populatePavementChecklist(pavements);
         if (pavements.length > 0) {
             await selectPavement(pavements[0].id);
         }
     } catch (e) {
         showToast('加载铺地列表失败', 'error');
     }
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            const tab = btn.getAttribute('data-tab');
+            const content = document.getElementById(`tab-${tab}`);
+            if (content) content.classList.add('active');
+        });
+    });
 
     const selectEl = document.getElementById('pavement-selector');
     if (selectEl) {
@@ -274,5 +303,360 @@ document.addEventListener('DOMContentLoaded', async () => {
         aestheticBtn.addEventListener('click', handleAnalyzeAesthetic);
     }
 
+    const compareStyleBtn = document.getElementById('compare-styles');
+    if (compareStyleBtn) {
+        compareStyleBtn.addEventListener('click', async () => {
+            const selected = Array.from(document.querySelectorAll('.pavement-check:checked')).map(cb => cb.value);
+            if (selected.length < 2) {
+                showToast('请至少选择2个铺地进行对比', 'warning');
+                return;
+            }
+            const rainfall = parseFloat(document.getElementById('rainfall-slider')?.value) || 50;
+            try {
+                const result = await api.compareStyles(selected, { rainfallMm: rainfall });
+                populateComparisonPanel(result);
+                showToast('样式对比分析完成', 'info');
+            } catch (e) {
+                showToast('样式对比失败', 'error');
+            }
+        });
+    }
+
+    const compareEraBtn = document.getElementById('compare-eras');
+    if (compareEraBtn) {
+        compareEraBtn.addEventListener('click', async () => {
+            const selected = pavements.filter(p => p.era === 'ANCIENT' || p.era === 'MODERN').map(p => p.id);
+            const rainfall = parseFloat(document.getElementById('rainfall-slider')?.value) || 50;
+            try {
+                const result = await api.compareEras(selected, { rainfallMm: rainfall });
+                populateComparisonPanel(result);
+                showToast('跨时代对比分析完成', 'info');
+            } catch (e) {
+                showToast('跨时代对比失败', 'error');
+            }
+        });
+    }
+
+    const propBtn = document.getElementById('run-propagation');
+    if (propBtn) {
+        propBtn.addEventListener('click', async () => {
+            if (!currentPavement) {
+                showToast('请先选择铺地', 'warning');
+                return;
+            }
+            const params = {
+                pavementId: currentPavement.id,
+                initialCrackWidthMm: parseFloat(document.getElementById('init-crack-width')?.value) || 2.0,
+                stepFrequency: parseFloat(document.getElementById('step-freq-prop')?.value) || 30.0,
+                totalSteps: parseInt(document.getElementById('total-steps')?.value) || 10000,
+                simulationHours: parseFloat(document.getElementById('sim-hours')?.value) || 8760
+            };
+            try {
+                const result = await api.simulateCrackPropagation(params);
+                populatePropagationPanel(result);
+                if (scene && result.segmentPropagation) {
+                    scene.applyPropagation(result.segmentPropagation);
+                }
+                showToast('裂缝扩展模拟完成', 'info');
+            } catch (e) {
+                showToast('裂缝扩展模拟失败', 'error');
+            }
+        });
+    }
+
+    const designSubmitBtn = document.getElementById('submit-design');
+    if (designSubmitBtn) {
+        designSubmitBtn.addEventListener('click', async () => {
+            const designName = document.getElementById('design-name')?.value || '我的冰裂纹设计';
+            const areaLength = parseFloat(document.getElementById('design-length')?.value) || 10;
+            const areaWidth = parseFloat(document.getElementById('design-width')?.value) || 10;
+            const slopeAngle = parseFloat(document.getElementById('design-slope')?.value) || 2;
+            const basePermeability = parseFloat(document.getElementById('design-perm')?.value) || 0.001;
+            const rainfall = parseFloat(document.getElementById('design-rainfall')?.value) || 50;
+            const crackWidth = parseFloat(document.getElementById('design-crack-width')?.value) || 3;
+            const stepFreq = parseFloat(document.getElementById('design-step-freq')?.value) || 30;
+
+            let segments = (window._userDesignSegments || []);
+            if (segments.length === 0) {
+                showToast('请先在画布上绘制冰裂纹', 'warning');
+                return;
+            }
+
+            try {
+                const result = await api.submitUserDesign({
+                    designName,
+                    crackPattern: JSON.stringify(segments),
+                    areaLength,
+                    areaWidth,
+                    slopeAngle,
+                    basePermeability,
+                    rainfallMm: rainfall,
+                    crackWidthMm: crackWidth,
+                    stepFrequency: stepFreq,
+                    runAesthetic: true,
+                    runDrainage: true
+                });
+                populateDesignResultPanel(result);
+                if (scene && segments.length > 0) {
+                    scene.clearScene();
+                    scene.initPavement(areaLength, areaWidth);
+                    scene.loadCrackStyle('CUSTOM', segments);
+                }
+                showToast('设计提交成功，已完成美学与排水分析', 'info');
+            } catch (e) {
+                showToast('设计提交失败', 'error');
+            }
+        });
+    }
+
+    initUserDesignCanvas();
+
     loadAlerts();
 });
+
+function populateComparisonPanel(result) {
+    const panel = document.getElementById('comparison-panel');
+    if (!panel) return;
+    panel.innerHTML = '';
+    if (!result) return;
+    if (result.summary) {
+        const s = document.createElement('div');
+        s.className = 'comparison-summary';
+        s.textContent = result.summary;
+        panel.appendChild(s);
+    }
+    const grid = document.createElement('div');
+    grid.className = 'comparison-grid';
+    const aes = result.aestheticResults || [];
+    const drain = result.drainageResults || [];
+    const all = aes.map((a, i) => ({ ...a, ...(drain[i] || {}) }));
+    for (const r of all) {
+        const card = document.createElement('div');
+        card.className = 'comparison-card';
+        card.innerHTML = `
+            <h4>${r.pavementName || ''} <span style="font-size:10px;color:var(--text-muted)">${r.pavementStyle || ''} / ${r.era || ''}</span></h4>
+            <div class="compare-row"><span>视觉复杂度</span><b>${(r.visualComplexity || 0).toFixed(3)}</b></div>
+            <div class="compare-row"><span>分形维数</span><b>${(r.fractalDimension || 0).toFixed(3)}</b></div>
+            <div class="compare-row"><span>退水时间</span><b>${(r.recessionTimeSec || 0).toFixed(0)}s</b></div>
+            <div class="compare-row"><span>渗透速率</span><b>${(r.infiltrationRate || 0).toFixed(6)}</b></div>
+            ${r.alertTriggered ? '<div style="color:var(--accent-red);font-size:11px;margin-top:4px">⚠ 触发告警</div>' : ''}
+        `;
+        grid.appendChild(card);
+    }
+    panel.appendChild(grid);
+}
+
+function populatePropagationPanel(result) {
+    const panel = document.getElementById('propagation-panel');
+    if (!panel) return;
+    panel.innerHTML = '';
+    if (!result) return;
+    const rows = [
+        ['初始裂缝宽度', `${(result.initialCrackWidthMm || 0).toFixed(2)} mm`],
+        ['最终平均宽度', `${(result.finalCrackWidthMm || 0).toFixed(2)} mm`],
+        ['扩展增量', `${((result.finalCrackWidthMm || 0) - (result.initialCrackWidthMm || 0)).toFixed(2)} mm`],
+        ['踩踏频率', `${(result.stepFrequency || 0).toFixed(1)} 次/min`],
+        ['模拟踩踏总次', `${(result.totalSteps || 0).toLocaleString()}`],
+        ['模拟时长', `${(result.simulationHours || 0).toFixed(0)} 小时`],
+        ['损伤指数', `${(result.damageIndex || 0).toFixed(3)} ${(result.damageIndex || 0) > 0.5 ? '⚠ 高风险' : ''}`]
+    ];
+    const tbl = document.createElement('table');
+    tbl.className = 'simple-table';
+    for (const [k, v] of rows) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${k}</td><td><b>${v}</b></td>`;
+        tbl.appendChild(tr);
+    }
+    panel.appendChild(tbl);
+    if (result.widthHistory) {
+        const cvs = document.createElement('canvas');
+        cvs.id = 'propagation-history';
+        cvs.width = 500;
+        cvs.height = 150;
+        panel.appendChild(cvs);
+        try {
+            const history = typeof result.widthHistory === 'string' ? JSON.parse(result.widthHistory) : result.widthHistory;
+            if (charts) charts.drawTimeSeries(history.map(p => ({ time: p.hour, avgDepth: p.avgWidthMm, maxDepth: p.maxWidthMm })), 'propagation-history');
+        } catch (e) {}
+    }
+}
+
+function populateDesignResultPanel(result) {
+    const panel = document.getElementById('design-result-panel');
+    if (!panel) return;
+    panel.innerHTML = '';
+    if (!result) return;
+    const h = document.createElement('h4');
+    h.textContent = result.designName || '设计结果';
+    panel.appendChild(h);
+    if (result.aestheticResult) {
+        const a = result.aestheticResult;
+        const div = document.createElement('div');
+        div.className = 'design-result-section';
+        div.innerHTML = `
+            <h5>美学分析</h5>
+            <div class="compare-row"><span>分形维数</span><b>${(a.fractalDimension || 0).toFixed(3)}</b></div>
+            <div class="compare-row"><span>信息熵</span><b>${(a.infoEntropy || 0).toFixed(3)}</b></div>
+            <div class="compare-row"><span>视觉复杂度</span><b>${(a.visualComplexity || 0).toFixed(3)}</b></div>
+            <div class="compare-row"><span>裂缝数</span><b>${a.crackCount || 0}</b></div>
+            <div class="compare-row"><span>裂缝密度</span><b>${(a.crackDensity || 0).toFixed(3)}</b></div>
+            <div class="compare-row"><span>对称性</span><b>${(a.patternSymmetry || 0).toFixed(3)}</b></div>
+        `;
+        panel.appendChild(div);
+    }
+    if (result.drainageResult) {
+        const d = result.drainageResult;
+        const div = document.createElement('div');
+        div.className = 'design-result-section';
+        div.innerHTML = `
+            <h5>排水仿真</h5>
+            <div class="compare-row"><span>退水时间</span><b>${(d.recessionTimeSec || 0).toFixed(0)} s</b></div>
+            <div class="compare-row"><span>峰值水深</span><b>${((d.peakWaterDepth || 0) * 1000).toFixed(2)} mm</b></div>
+            <div class="compare-row"><span>排水速率</span><b>${(d.drainageRate || 0).toFixed(6)}</b></div>
+            <div class="compare-row"><span>渗透速率</span><b>${(d.infiltrationRate || 0).toFixed(6)}</b></div>
+            ${d.alertTriggered ? '<div style="color:var(--accent-red);font-size:11px">⚠ 排水告警</div>' : '<div style="color:var(--accent-green);font-size:11px">✓ 排水正常</div>'}
+        `;
+        panel.appendChild(div);
+    }
+}
+
+function initUserDesignCanvas() {
+    const canvas = document.getElementById('design-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+    let startPoint = null;
+    window._userDesignSegments = window._userDesignSegments || [];
+
+    function redraw() {
+        ctx.fillStyle = '#e8dfc8';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#b5a57f';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < canvas.width; x += 40) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+        }
+        for (let y = 0; y < canvas.height; y += 40) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+        ctx.strokeStyle = '#2a2520';
+        ctx.lineWidth = 1.5;
+        for (const seg of window._userDesignSegments) {
+            const sx = (seg[0][0] / 10) * canvas.width;
+            const sy = (seg[0][1] / 10) * canvas.height;
+            const ex = (seg[1][0] / 10) * canvas.width;
+            const ey = (seg[1][1] / 10) * canvas.height;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
+        }
+    }
+
+    const pos = (e) => {
+        const r = canvas.getBoundingClientRect();
+        const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+        const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+        return { x: (cx / canvas.width) * 10, y: (cy / canvas.height) * 10 };
+    };
+
+    canvas.addEventListener('mousedown', (e) => {
+        drawing = true;
+        startPoint = pos(e);
+    });
+    canvas.addEventListener('mousemove', (e) => {
+        if (!drawing || !startPoint) return;
+        redraw();
+        const p = pos(e);
+        ctx.strokeStyle = '#2a2520';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        const sx = (startPoint.x / 10) * canvas.width;
+        const sy = (startPoint.y / 10) * canvas.height;
+        const ex = (p.x / 10) * canvas.width;
+        const ey = (p.y / 10) * canvas.height;
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+    });
+    canvas.addEventListener('mouseup', (e) => {
+        if (!drawing || !startPoint) return;
+        const p = pos(e);
+        const dx = p.x - startPoint.x;
+        const dy = p.y - startPoint.y;
+        if (Math.sqrt(dx * dx + dy * dy) > 0.1) {
+            window._userDesignSegments.push([[startPoint.x, startPoint.y], [p.x, p.y]]);
+        }
+        drawing = false;
+        startPoint = null;
+        redraw();
+    });
+    canvas.addEventListener('mouseleave', () => {
+        drawing = false;
+        startPoint = null;
+        redraw();
+    });
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        drawing = true;
+        startPoint = pos(e);
+    });
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (!drawing || !startPoint) return;
+        redraw();
+        const p = pos(e);
+        ctx.strokeStyle = '#2a2520';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        const sx = (startPoint.x / 10) * canvas.width;
+        const sy = (startPoint.y / 10) * canvas.height;
+        const ex = (p.x / 10) * canvas.width;
+        const ey = (p.y / 10) * canvas.height;
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+    });
+    canvas.addEventListener('touchend', (e) => {
+        if (!drawing || !startPoint) return;
+        const touches = e.changedTouches;
+        const r = canvas.getBoundingClientRect();
+        const cx = touches[0].clientX - r.left;
+        const cy = touches[0].clientY - r.top;
+        const p = { x: (cx / canvas.width) * 10, y: (cy / canvas.height) * 10 };
+        const dx = p.x - startPoint.x;
+        const dy = p.y - startPoint.y;
+        if (Math.sqrt(dx * dx + dy * dy) > 0.1) {
+            window._userDesignSegments.push([[startPoint.x, startPoint.y], [p.x, p.y]]);
+        }
+        drawing = false;
+        startPoint = null;
+        redraw();
+    });
+
+    const clearBtn = document.getElementById('clear-design');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            window._userDesignSegments = [];
+            redraw();
+        });
+    }
+
+    const randBtn = document.getElementById('random-design');
+    if (randBtn) {
+        randBtn.addEventListener('click', () => {
+            if (!scene) return;
+            const segs = scene.generateIceCracks({ seed: Math.floor(Math.random() * 10000), segments: 30 });
+            window._userDesignSegments = segs.map(s => [[s.x1 + 5, s.z1 + 5], [s.x2 + 5, s.z2 + 5]]);
+            redraw();
+        });
+    }
+
+    redraw();
+}

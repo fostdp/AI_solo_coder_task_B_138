@@ -338,6 +338,213 @@ export class IceCrackScene {
     return this.crackSegments;
   }
 
+  _addCrackSegment(cx1, cz1, cx2, cz2, color) {
+    this.crackSegments.push({ x1: cx1, z1: cz1, x2: cx2, z2: cz2 });
+    const points = [
+      new THREE.Vector3(cx1, 0.01, cz1),
+      new THREE.Vector3(cx2, 0.01, cz2)
+    ];
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({ color: color || 0x2a2520 });
+    const line = new THREE.Line(geometry, material);
+    this.crackGroup.add(line);
+    this.crackLines.push(line);
+  }
+
+  _half(val) { return val / 2; }
+
+  generateHerringbone(pattern) {
+    const parsed = typeof pattern === 'string' ? JSON.parse(pattern) : (pattern || {});
+    const spacing = parsed.spacing || 0.4;
+    const angleDeg = parsed.angle || 45;
+    const irregularity = parsed.irregularity || 0.15;
+    const halfL = this._half(this.pavementLength);
+    const halfW = this._half(this.pavementWidth);
+    const angle = angleDeg * Math.PI / 180;
+    const diagX = Math.cos(angle);
+    const diagY = Math.sin(angle);
+    const perpX = -diagY;
+    const perpY = diagX;
+    const extent = Math.max(this.pavementLength, this.pavementWidth) * 0.8;
+    const jitter = () => (Math.random() - 0.5) * 2 * irregularity;
+
+    this.crackSegments = [];
+    this.crackLines = [];
+
+    for (let t = -extent; t < extent; t += spacing) {
+      const ox = perpX * t;
+      const oy = perpY * t;
+      for (let s = -extent; s < extent; s += spacing * 2) {
+        const x1 = ox + diagX * s, y1 = oy + diagY * s;
+        const x2 = ox + diagX * (s + spacing), y2 = oy + diagY * (s + spacing);
+        if (x1 >= -halfL && x1 <= halfL && y1 >= -halfW && y1 <= halfW
+            && x2 >= -halfL && x2 <= halfL && y2 >= -halfW && y2 <= halfW) {
+          this._addCrackSegment(x1 + jitter(), y1 + jitter(), x2 + jitter(), y2 + jitter(), 0x665443);
+        }
+      }
+      const altAngle = angle + Math.PI / 2;
+      const adx = Math.cos(altAngle), ady = Math.sin(altAngle);
+      for (let s = -extent; s < extent; s += spacing * 2) {
+        const x1 = ox + adx * s + diagX * spacing, y1 = oy + ady * s + diagY * spacing;
+        const x2 = ox + adx * (s + spacing) + diagX * spacing, y2 = oy + ady * (s + spacing) + diagY * spacing;
+        if (x1 >= -halfL && x1 <= halfL && y1 >= -halfW && y1 <= halfW
+            && x2 >= -halfL && x2 <= halfL && y2 >= -halfW && y2 <= halfW) {
+          this._addCrackSegment(x1 + jitter(), y1 + jitter(), x2 + jitter(), y2 + jitter(), 0x665443);
+        }
+      }
+    }
+    return this.crackSegments;
+  }
+
+  generateBasketweave(pattern) {
+    const parsed = typeof pattern === 'string' ? JSON.parse(pattern) : (pattern || {});
+    const tileW = parsed.tileWidth || 0.5;
+    const tileH = parsed.tileHeight || 0.25;
+    const irregularity = parsed.irregularity || 0.1;
+    const halfL = this._half(this.pavementLength);
+    const halfW = this._half(this.pavementWidth);
+    const cellW = tileW + tileH;
+    const jitter = () => (Math.random() - 0.5) * 2 * irregularity;
+
+    this.crackSegments = [];
+    this.crackLines = [];
+
+    const add = (x1, y1, x2, y2) => {
+      if (x1 >= -halfL && x1 <= halfL && y1 >= -halfW && y1 <= halfW
+          && x2 >= -halfL && x2 <= halfL && y2 >= -halfW && y2 <= halfW) {
+        this._addCrackSegment(x1 + jitter(), y1 + jitter(), x2 + jitter(), y2 + jitter(), 0x705a45);
+      }
+    };
+
+    for (let y = -halfW; y < halfW; y += cellW) {
+      for (let x = -halfL; x < halfL; x += cellW) {
+        const isHoriz = ((Math.floor((x + halfL) / cellW) + Math.floor((y + halfW) / cellW)) % 2 === 0);
+        if (isHoriz) {
+          add(x, y, x + tileW, y);
+          add(x, y + tileH, x + tileW, y + tileH);
+          add(x, y, x, y + tileH);
+          add(x + tileW, y, x + tileW, y + tileH);
+          add(x + tileW, y, x + tileW + tileH, y);
+          add(x + tileW, y + tileH, x + tileW + tileH, y + tileH);
+          add(x + tileW + tileH, y, x + tileW + tileH, y + tileH);
+        } else {
+          add(x, y, x, y + tileW);
+          add(x + tileH, y, x + tileH, y + tileW);
+          add(x, y, x + tileH, y);
+          add(x, y + tileW, x + tileH, y + tileW);
+          add(x, y + tileW, x, y + tileW + tileH);
+          add(x + tileH, y + tileW, x + tileH, y + tileW + tileH);
+          add(x, y + tileW + tileH, x + tileH, y + tileW + tileH);
+        }
+      }
+    }
+    return this.crackSegments;
+  }
+
+  generatePermeableBrick(pattern) {
+    const parsed = typeof pattern === 'string' ? JSON.parse(pattern) : (pattern || {});
+    const brickSize = parsed.brickSize || 0.2;
+    const gapWidth = parsed.gapWidth || 0.015;
+    const halfL = this._half(this.pavementLength);
+    const halfW = this._half(this.pavementWidth);
+    const cell = brickSize + gapWidth;
+
+    this.crackSegments = [];
+    this.crackLines = [];
+
+    for (let y = -halfW; y < halfW; y += cell) {
+      for (let x = -halfL; x < halfL; x += cell) {
+        const jx = gapWidth * 0.2 * (Math.random() - 0.5);
+        const jy = gapWidth * 0.2 * (Math.random() - 0.5);
+        const bx = x + jx, by = y + jy;
+        this._addCrackSegment(bx, by, bx + brickSize, by, 0x333333);
+        this._addCrackSegment(bx, by + brickSize, bx + brickSize, by + brickSize, 0x333333);
+        this._addCrackSegment(bx, by, bx, by + brickSize, 0x333333);
+        this._addCrackSegment(bx + brickSize, by, bx + brickSize, by + brickSize, 0x333333);
+      }
+    }
+
+    const numMicro = Math.floor(this.pavementLength * this.pavementWidth * 2);
+    for (let i = 0; i < numMicro; i++) {
+      const cx = (Math.random() - 0.5) * this.pavementLength;
+      const cy = (Math.random() - 0.5) * this.pavementWidth;
+      const len = brickSize * (0.2 + Math.random() * 0.6);
+      const ang = Math.random() * Math.PI;
+      this._addCrackSegment(cx, cy,
+        cx + Math.cos(ang) * len,
+        cy + Math.sin(ang) * len, 0x222222);
+    }
+    return this.crackSegments;
+  }
+
+  generateCustomCracks(crackPattern) {
+    const segments = typeof crackPattern === 'string' ? JSON.parse(crackPattern) : crackPattern;
+    this.crackSegments = [];
+    this.crackLines = [];
+    if (!segments || !Array.isArray(segments)) return this.crackSegments;
+    const halfL = this._half(this.pavementLength);
+    const halfW = this._half(this.pavementWidth);
+    for (const seg of segments) {
+      if (!seg || seg.length < 2) continue;
+      const x1 = Math.max(-halfL, Math.min(halfL, seg[0][0] - halfL));
+      const z1 = Math.max(-halfW, Math.min(halfW, seg[0][1] - halfW));
+      const x2 = Math.max(-halfL, Math.min(halfL, seg[1][0] - halfL));
+      const z2 = Math.max(-halfW, Math.min(halfW, seg[1][1] - halfW));
+      this._addCrackSegment(x1, z1, x2, z2, 0x333333);
+    }
+    return this.crackSegments;
+  }
+
+  loadCrackStyle(style, pattern, customSegments) {
+    this.crackGroup.clear();
+    this.crackLines = [];
+    switch (style) {
+      case 'HERRINGBONE':
+        return this.generateHerringbone(pattern);
+      case 'BASKETWEAVE':
+        return this.generateBasketweave(pattern);
+      case 'PERMEABLE_BRICK':
+        return this.generatePermeableBrick(pattern);
+      case 'CUSTOM':
+        return this.generateCustomCracks(customSegments || pattern);
+      case 'ICE_CRACK':
+      default:
+        return this.generateIceCracks(pattern);
+    }
+  }
+
+  applyPropagation(segmentPropagationData) {
+    const data = typeof segmentPropagationData === 'string'
+      ? JSON.parse(segmentPropagationData)
+      : segmentPropagationData;
+    if (!data || !Array.isArray(data)) return;
+    const halfL = this._half(this.pavementLength);
+    const halfW = this._half(this.pavementWidth);
+    this.crackGroup.clear();
+    this.crackLines = [];
+    this.crackSegments = [];
+    for (const seg of data) {
+      const x1 = Math.max(-halfL, Math.min(halfL, seg.x1 - halfL));
+      const z1 = Math.max(-halfW, Math.min(halfW, seg.y1 - halfW));
+      const x2 = Math.max(-halfL, Math.min(halfL, seg.x2 - halfL));
+      const z2 = Math.max(-halfW, Math.min(halfW, seg.y2 - halfW));
+      this.crackSegments.push({ x1, z1, x2, z2 });
+      const points = [
+        new THREE.Vector3(x1, 0.01, z1),
+        new THREE.Vector3(x2, 0.01, z2)
+      ];
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const growth = (seg.growth || 0);
+      let color = 0x2a2520;
+      if (growth > 3) color = 0xcc3333;
+      else if (growth > 1.5) color = 0xcc8800;
+      const material = new THREE.LineBasicMaterial({ color, linewidth: Math.min(3, 1 + growth) });
+      const line = new THREE.Line(geometry, material);
+      this.crackGroup.add(line);
+      this.crackLines.push(line);
+    }
+  }
+
   _createWaterMesh(segments) {
     const seg = this.isMobile ? Math.min(segments, 16) : Math.min(segments, 32);
     const geometry = new THREE.PlaneGeometry(this.pavementLength, this.pavementWidth, seg, seg);

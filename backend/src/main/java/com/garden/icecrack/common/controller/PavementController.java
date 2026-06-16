@@ -27,6 +27,16 @@ public class PavementController {
         return ResponseEntity.ok(pavementRepository.findAll());
     }
 
+    @GetMapping("/styles")
+    public ResponseEntity<Pavement.PavementStyle[]> listStyles() {
+        return ResponseEntity.ok(Pavement.PavementStyle.values());
+    }
+
+    @GetMapping("/eras")
+    public ResponseEntity<Pavement.Era[]> listEras() {
+        return ResponseEntity.ok(Pavement.Era.values());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Pavement> getById(@PathVariable UUID id) {
         return pavementRepository.findById(id)

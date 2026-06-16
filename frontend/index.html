@@ -13,27 +13,84 @@
 
   <div class="app-layout">
     <aside class="sidebar">
-      <h3>铺地选择</h3>
-      <label for="pavement-selector">选择铺地</label>
-      <select id="pavement-selector"></select>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="analysis">分析</button>
+        <button class="tab-btn" data-tab="compare">对比</button>
+        <button class="tab-btn" data-tab="propagation">扩展</button>
+        <button class="tab-btn" data-tab="design">设计</button>
+      </div>
 
-      <h3>仿真参数</h3>
-      <label for="rainfall-slider">降雨强度 (mm/h)</label>
-      <input type="range" id="rainfall-slider" class="range-slider" min="0" max="200" value="50" />
-      <span id="rainfall-value">50</span>
-      <label for="crack-width">裂缝宽度 (mm)</label>
-      <input type="number" id="crack-width" min="0.1" max="30" step="0.1" value="5" />
-      <label for="step-frequency">游客踩踏频率 (次/分钟)</label>
-      <input type="number" id="step-frequency" min="0" max="120" step="1" value="30" />
-      <label for="grid-resolution">网格分辨率</label>
-      <input type="number" id="grid-resolution" min="5" max="100" step="5" value="20" />
-      <label for="sim-duration">仿真时长 (秒)</label>
-      <input type="number" id="sim-duration" min="60" max="7200" step="60" value="3600" />
-      <label for="initial-water-depth">初始积水深度 (mm)</label>
-      <input type="number" id="initial-water-depth" min="0" max="100" step="1" value="10" />
+      <div id="tab-analysis" class="tab-content active">
+        <h3>铺地选择</h3>
+        <label for="pavement-selector">选择铺地</label>
+        <select id="pavement-selector"></select>
 
-      <button id="run-simulation" class="btn-primary">运行排水仿真</button>
-      <button id="run-aesthetic" class="btn-secondary">运行美学分析</button>
+        <h3>仿真参数</h3>
+        <label for="rainfall-slider">降雨强度 (mm/h)</label>
+        <input type="range" id="rainfall-slider" class="range-slider" min="0" max="200" value="50" />
+        <span id="rainfall-value">50</span>
+        <label for="crack-width">裂缝宽度 (mm)</label>
+        <input type="number" id="crack-width" min="0.1" max="30" step="0.1" value="5" />
+        <label for="step-frequency">游客踩踏频率 (次/分钟)</label>
+        <input type="number" id="step-frequency" min="0" max="120" step="1" value="30" />
+        <label for="grid-resolution">网格分辨率</label>
+        <input type="number" id="grid-resolution" min="5" max="100" step="5" value="20" />
+        <label for="sim-duration">仿真时长 (秒)</label>
+        <input type="number" id="sim-duration" min="60" max="7200" step="60" value="3600" />
+        <label for="initial-water-depth">初始积水深度 (mm)</label>
+        <input type="number" id="initial-water-depth" min="0" max="100" step="1" value="10" />
+
+        <button id="run-simulation" class="btn-primary">运行排水仿真</button>
+        <button id="run-aesthetic" class="btn-secondary">运行美学分析</button>
+      </div>
+
+      <div id="tab-compare" class="tab-content">
+        <h3>铺地样式对比</h3>
+        <div id="pavement-checklist"></div>
+        <button id="compare-styles" class="btn-primary">样式对比</button>
+        <button id="compare-eras" class="btn-secondary">跨时代对比</button>
+      </div>
+
+      <div id="tab-propagation" class="tab-content">
+        <h3>踩踏-裂缝扩展</h3>
+        <label for="init-crack-width">初始裂缝宽度 (mm)</label>
+        <input type="number" id="init-crack-width" min="0.5" max="20" step="0.1" value="2.0" />
+        <label for="step-freq-prop">踩踏频率 (次/分钟)</label>
+        <input type="number" id="step-freq-prop" min="0" max="120" step="1" value="30" />
+        <label for="total-steps">总踩踏次数</label>
+        <input type="number" id="total-steps" min="1000" max="1000000" step="1000" value="10000" />
+        <label for="sim-hours">模拟时长 (小时)</label>
+        <input type="number" id="sim-hours" min="1" max="87600" step="100" value="8760" />
+        <button id="run-propagation" class="btn-primary">运行扩展模拟</button>
+      </div>
+
+      <div id="tab-design" class="tab-content">
+        <h3>虚拟铺地设计</h3>
+        <label for="design-name">设计名称</label>
+        <input type="text" id="design-name" placeholder="我的冰裂纹设计" />
+        <div class="design-canvas-wrap">
+          <canvas id="design-canvas" width="300" height="300"></canvas>
+        </div>
+        <div class="btn-row">
+          <button id="clear-design" class="btn-secondary" style="flex:1">清空</button>
+          <button id="random-design" class="btn-secondary" style="flex:1">随机</button>
+        </div>
+        <label for="design-length">场地长度 (m)</label>
+        <input type="number" id="design-length" min="1" max="50" step="0.5" value="10" />
+        <label for="design-width">场地宽度 (m)</label>
+        <input type="number" id="design-width" min="1" max="50" step="0.5" value="10" />
+        <label for="design-slope">坡度 (度)</label>
+        <input type="number" id="design-slope" min="0" max="10" step="0.1" value="2" />
+        <label for="design-perm">基础渗透率</label>
+        <input type="number" id="design-perm" min="0.0001" max="0.05" step="0.0005" value="0.001" />
+        <label for="design-rainfall">降雨 (mm/h)</label>
+        <input type="number" id="design-rainfall" min="0" max="200" step="5" value="50" />
+        <label for="design-crack-width">裂缝宽度 (mm)</label>
+        <input type="number" id="design-crack-width" min="0.1" max="30" step="0.1" value="3" />
+        <label for="design-step-freq">踩踏频率</label>
+        <input type="number" id="design-step-freq" min="0" max="120" step="1" value="30" />
+        <button id="submit-design" class="btn-primary">提交设计并分析</button>
+      </div>
     </aside>
 
     <main class="center-panel">
@@ -60,6 +117,15 @@
       <h3>美学分析结果</h3>
       <div id="aesthetic-results"></div>
       <canvas id="fractal-canvas" width="300" height="180"></canvas>
+
+      <h3>样式对比结果</h3>
+      <div id="comparison-panel"></div>
+
+      <h3>裂缝扩展结果</h3>
+      <div id="propagation-panel"></div>
+
+      <h3>设计分析结果</h3>
+      <div id="design-result-panel"></div>
 
       <h3>告警信息</h3>
       <div id="alerts-panel"></div>

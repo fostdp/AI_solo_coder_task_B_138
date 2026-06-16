@@ -6,6 +6,7 @@ import com.garden.icecrack.aesthetics_analyzer.dto.AestheticResultDTO;
 import com.garden.icecrack.aesthetics_analyzer.entity.AestheticResult;
 import com.garden.icecrack.aesthetics_analyzer.repository.AestheticResultRepository;
 import com.garden.icecrack.common.entity.Pavement;
+import com.garden.icecrack.common.pattern.PavementPatternFactory;
 import com.garden.icecrack.common.repository.PavementRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,7 +14,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -33,11 +34,15 @@ public class AestheticQuantificationService {
         double areaWidth = pavement.getAreaWidth();
         double area = areaLength * areaWidth;
 
+        Pavement.PavementStyle style = pavement.getPavementStyle() != null
+                ? pavement.getPavementStyle()
+                : Pavement.PavementStyle.ICE_CRACK;
         List<double[][]> segments;
-        if (pavement.getCrackPattern() != null && !pavement.getCrackPattern().isBlank()) {
+        if (style == Pavement.PavementStyle.CUSTOM && pavement.getCrackPattern() != null
+                && !pavement.getCrackPattern().isBlank()) {
             segments = parseCrackPattern(pavement.getCrackPattern());
         } else {
-            segments = generateCrackPattern(areaLength, areaWidth);
+            segments = PavementPatternFactory.generateSegments(style, areaLength, areaWidth, pavement.getCrackPattern());
         }
 
         List<double[][]> extendedSegments = periodicallyExtendSegments(segments, areaLength, areaWidth);
@@ -403,6 +408,74 @@ public class AestheticQuantificationService {
         double vertSym = Math.abs(quadrantLength[0] + quadrantLength[1] - quadrantLength[2] - quadrantLength[3]) / totalLen;
         double distSym = 1.0 - Math.min(chiSquare / (props.getSymmetryChiDivisor() * expected), 1.0);
         return Math.min(1.0, props.getSymmetryDistWeight() * distSym + props.getSymmetryHorizWeight() * (1.0 - horizSym) + props.getSymmetryVertWeight() * (1.0 - vertSym));
+    }
+
+    public AestheticResultDTO analyzeCustomSegments(String crackPattern, double areaLength, double areaWidth) {
+        double area = areaLength * areaWidth;
+        List<double[][]> segments = parseCrackPattern(crackPattern);
+        if (segments.isEmpty()) {
+            segments = PavementPatternFactory.generateSegments(
+                    Pavement.PavementStyle.ICE_CRACK, areaLength, areaWidth, crackPattern);
+        }
+        List<double[][]> extendedSegments = periodicallyExtendSegments(segments, areaLength, areaWidth);
+        double fractalDimension = computeUnbiasedBoxCountingDimension(extendedSegments, areaLength, areaWidth);
+        double rawBoxCountingDim = computeRawBoxCountingDimension(segments, areaLength, areaWidth);
+        double infoEntropy = computeInformationEntropy(segments);
+        double totalCrackLength = computeTotalCrackLength(segments);
+        double crackDensity = totalCrackLength / area;
+        double normalizedEntropy = infoEntropy / (Math.log(props.getEntropyBins()) / Math.log(2));
+        double visualComplexity = props.getFractalWeight() * fractalDimension
+                + props.getEntropyWeight() * normalizedEntropy
+                + props.getDensityWeight() * Math.min(crackDensity * props.getDensityScale(), 1.0);
+        double patternSymmetry = computePatternSymmetry(segments, areaLength, areaWidth);
+        String crackSegmentsJson;
+        try {
+            crackSegmentsJson = objectMapper.writeValueAsString(segments);
+        } catch (Exception e) {
+            crackSegmentsJson = "[]";
+        }
+        AestheticResultDTO dto = new AestheticResultDTO();
+        dto.setFractalDimension(fractalDimension);
+        dto.setBoxCountingDim(rawBoxCountingDim);
+        dto.setInfoEntropy(infoEntropy);
+        dto.setVisualComplexity(visualComplexity);
+        dto.setCrackCount(segments.size());
+        dto.setAvgCrackLength(segments.isEmpty() ? 0.0 : totalCrackLength / segments.size());
+        dto.setCrackDensity(crackDensity);
+        dto.setPatternSymmetry(patternSymmetry);
+        dto.setCrackSegments(crackSegmentsJson);
+        return dto;
+    }
+
+    public Map<String, Object> evaluateStyleMatch(String crackPattern, double areaLength, double areaWidth) {
+        AestheticResultDTO result = analyzeCustomSegments(crackPattern, areaLength, areaWidth);
+        double iceCrackScore = 0.0;
+        if (result.getFractalDimension() != null) {
+            double fd = result.getFractalDimension();
+            if (fd >= 1.3 && fd <= 1.7) {
+                iceCrackScore = 1.0 - Math.abs(fd - 1.5) * 2.0;
+            }
+        }
+        double herringboneScore = result.getPatternSymmetry() != null ? result.getPatternSymmetry() : 0.0;
+        double basketweaveScore = result.getPatternSymmetry() != null
+                ? Math.min(1.0, result.getPatternSymmetry() * 1.1) : 0.0;
+        double brickScore = result.getCrackDensity() != null
+                ? Math.min(1.0, result.getCrackDensity() * 8.0) : 0.0;
+        return Map.of(
+                "scores", Map.of(
+                        "iceCrack", Math.max(0.0, Math.min(1.0, iceCrackScore)),
+                        "herringbone", Math.max(0.0, Math.min(1.0, herringboneScore)),
+                        "basketweave", Math.max(0.0, Math.min(1.0, basketweaveScore)),
+                        "permeableBrick", Math.max(0.0, Math.min(1.0, brickScore))
+                ),
+                "metrics", Map.of(
+                        "fractalDimension", result.getFractalDimension(),
+                        "infoEntropy", result.getInfoEntropy(),
+                        "visualComplexity", result.getVisualComplexity(),
+                        "crackDensity", result.getCrackDensity(),
+                        "patternSymmetry", result.getPatternSymmetry()
+                )
+        );
     }
 
     private AestheticResultDTO toDTO(AestheticResult entity) {

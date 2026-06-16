@@ -1,6 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-CREATE TABLE pavement (
+CREATE TABLE IF NOT EXISTS pavement (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(200) NOT NULL,
     location VARCHAR(500),
@@ -9,6 +9,8 @@ CREATE TABLE pavement (
     slope_angle DOUBLE PRECISION NOT NULL DEFAULT 2.0,
     base_permeability DOUBLE PRECISION NOT NULL DEFAULT 0.001,
     crack_pattern JSONB,
+    pavement_style VARCHAR(30) DEFAULT 'ICE_CRACK',
+    era VARCHAR(20) DEFAULT 'ANCIENT',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -83,18 +85,69 @@ CREATE INDEX idx_alert_pavement ON alert(pavement_id);
 CREATE INDEX idx_alert_time ON alert(created_at DESC);
 CREATE INDEX idx_alert_unack ON alert(acknowledged) WHERE acknowledged = FALSE;
 
-INSERT INTO pavement (id, name, location, area_length, area_width, slope_angle, base_permeability, crack_pattern) VALUES
+INSERT INTO pavement (id, name, location, area_length, area_width, slope_angle, base_permeability, crack_pattern, pavement_style, era) VALUES
 ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', '拙政园远香堂前铺地', '苏州市姑苏区拙政园远香堂', 12.0, 8.0, 1.5, 0.0008,
- '{"seed": 42, "type": "hexagonal_ice", "segments": 35, "irregularity": 0.7}'),
+ '{"seed": 42, "type": "hexagonal_ice", "segments": 35, "irregularity": 0.7}', 'ICE_CRACK', 'ANCIENT'),
 
 ('b2c3d4e5-f6a7-8901-bcde-f12345678901', '留园涵碧山房铺地', '苏州市姑苏区留园涵碧山房', 10.0, 6.0, 2.0, 0.0012,
- '{"seed": 137, "type": "radial_ice", "segments": 28, "irregularity": 0.5}'),
+ '{"seed": 137, "type": "radial_ice", "segments": 28, "irregularity": 0.5}', 'ICE_CRACK', 'ANCIENT'),
 
 ('c3d4e5f6-a7b8-9012-cdef-123456789012', '网师园殿春簃铺地', '苏州市姑苏区网师园殿春簃', 8.0, 5.0, 2.5, 0.0015,
- '{"seed": 256, "type": "organic_ice", "segments": 42, "irregularity": 0.85}'),
+ '{"seed": 256, "type": "organic_ice", "segments": 42, "irregularity": 0.85}', 'ICE_CRACK', 'ANCIENT'),
 
 ('d4e5f6a7-b8c9-0123-defa-234567890123', '沧浪亭面水轩铺地', '苏州市姑苏区沧浪亭面水轩', 9.0, 7.0, 1.8, 0.0010,
- '{"seed": 512, "type": "angular_ice", "segments": 30, "irregularity": 0.6}'),
+ '{"seed": 512, "type": "angular_ice", "segments": 30, "irregularity": 0.6}', 'ICE_CRACK', 'ANCIENT'),
 
 ('e5f6a7b8-c9d0-1234-efab-345678901234', '狮子林立雪堂铺地', '苏州市姑苏区狮子林立雪堂', 11.0, 9.0, 1.2, 0.0006,
- '{"seed": 1024, "type": "mixed_ice", "segments": 50, "irregularity": 0.9}');
+ '{"seed": 1024, "type": "mixed_ice", "segments": 50, "irregularity": 0.9}', 'ICE_CRACK', 'ANCIENT'),
+
+('f6a7b8c9-d0e1-2345-fabc-456789012345', '艺圃延光阁人字纹铺地', '苏州市姑苏区艺圃延光阁', 10.0, 8.0, 2.0, 0.0010,
+ '{"seed": 2048, "type": "herringbone", "spacing": 0.4, "angle": 45, "irregularity": 0.15}', 'HERRINGBONE', 'ANCIENT'),
+
+('0fabcde1-2345-6789-abcd-567890123456', '耦园载酒堂席纹铺地', '苏州市姑苏区耦园载酒堂', 9.0, 7.0, 1.5, 0.0009,
+ '{"seed": 4096, "type": "basketweave", "tileWidth": 0.5, "tileHeight": 0.25, "irregularity": 0.1}', 'BASKETWEAVE', 'ANCIENT'),
+
+('1bcdefa2-3456-7890-bcde-678901234567', '现代生态透水砖示范段', '苏州园林博物馆示范区', 10.0, 8.0, 2.0, 0.008,
+ '{"seed": 8192, "type": "permeable_brick", "brickSize": 0.2, "gapWidth": 0.015, "porosity": 0.18}', 'PERMEABLE_BRICK', 'MODERN');
+
+CREATE TABLE IF NOT EXISTS style_comparison (
+    id BIGSERIAL PRIMARY KEY,
+    comparison_type VARCHAR(30) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    pavement_ids JSONB,
+    aesthetic_results JSONB,
+    drainage_results JSONB,
+    summary TEXT
+);
+
+CREATE TABLE IF NOT EXISTS crack_propagation (
+    id BIGSERIAL PRIMARY KEY,
+    pavement_id UUID NOT NULL REFERENCES pavement(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    initial_crack_width_mm DOUBLE PRECISION,
+    step_frequency DOUBLE PRECISION,
+    total_steps BIGINT,
+    simulation_hours DOUBLE PRECISION,
+    final_crack_width_mm DOUBLE PRECISION,
+    width_history JSONB,
+    segment_propagation JSONB,
+    damage_index DOUBLE PRECISION
+);
+
+CREATE TABLE IF NOT EXISTS user_pavement_design (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_session_id VARCHAR(100),
+    design_name VARCHAR(200),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    crack_pattern JSONB,
+    area_length DOUBLE PRECISION,
+    area_width DOUBLE PRECISION,
+    slope_angle DOUBLE PRECISION,
+    base_permeability DOUBLE PRECISION,
+    aesthetic_result_id BIGINT,
+    drainage_simulation_id BIGINT
+);
+
+CREATE INDEX IF NOT EXISTS idx_comparison_time ON style_comparison(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_crack_prop_pavement ON crack_propagation(pavement_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_design_session ON user_pavement_design(user_session_id);

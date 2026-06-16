@@ -20,6 +20,19 @@ import java.util.UUID;
 @Table(name = "pavement")
 public class Pavement {
 
+    public enum PavementStyle {
+        ICE_CRACK,
+        HERRINGBONE,
+        BASKETWEAVE,
+        PERMEABLE_BRICK,
+        CUSTOM
+    }
+
+    public enum Era {
+        ANCIENT,
+        MODERN
+    }
+
     @Id
     private UUID id;
 
@@ -37,6 +50,12 @@ public class Pavement {
 
     @Column(columnDefinition = "jsonb")
     private String crackPattern;
+
+    @Enumerated(jakarta.persistence.EnumType.STRING)
+    private PavementStyle pavementStyle = PavementStyle.ICE_CRACK;
+
+    @Enumerated(jakarta.persistence.EnumType.STRING)
+    private Era era = Era.ANCIENT;
 
     private LocalDateTime createdAt;
 

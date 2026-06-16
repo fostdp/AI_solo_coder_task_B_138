@@ -84,6 +84,90 @@ async function acknowledgeAlert(alertId) {
   return res.json();
 }
 
+async function analyzeAestheticCustom(crackPattern, areaLength = 10, areaWidth = 10) {
+  const res = await fetch(`${API_BASE}/aesthetic/analyze-custom`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ crackPattern, areaLength, areaWidth })
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function evaluateStyleMatch(crackPattern, areaLength = 10, areaWidth = 10) {
+  const res = await fetch(`${API_BASE}/aesthetic/evaluate-style`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ crackPattern, areaLength, areaWidth })
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function compareStyles(pavementIds, params = {}) {
+  const res = await fetch(`${API_BASE}/comparison/styles`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pavementIds, ...params })
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function compareEras(pavementIds, params = {}) {
+  const res = await fetch(`${API_BASE}/comparison/eras`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pavementIds, ...params })
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchComparisonHistory() {
+  const res = await fetch(`${API_BASE}/comparison/history`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function simulateCrackPropagation(params) {
+  const res = await fetch(`${API_BASE}/crack-propagation/simulate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params)
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchCrackPropagationHistory(pavementId) {
+  const res = await fetch(`${API_BASE}/crack-propagation/${pavementId}/history`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function submitUserDesign(params) {
+  const res = await fetch(`${API_BASE}/user-design/submit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params)
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchUserDesignsBySession(sessionId) {
+  const res = await fetch(`${API_BASE}/user-design/session/${sessionId}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchUserDesign(id) {
+  const res = await fetch(`${API_BASE}/user-design/${id}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 export {
   API_BASE,
   fetchPavements,
@@ -94,8 +178,18 @@ export {
   runSimulation,
   fetchSimulationHistory,
   analyzeAesthetic,
+  analyzeAestheticCustom,
+  evaluateStyleMatch,
   fetchAestheticHistory,
   fetchUnacknowledgedAlerts,
   fetchAlertsByPavement,
-  acknowledgeAlert
+  acknowledgeAlert,
+  compareStyles,
+  compareEras,
+  fetchComparisonHistory,
+  simulateCrackPropagation,
+  fetchCrackPropagationHistory,
+  submitUserDesign,
+  fetchUserDesignsBySession,
+  fetchUserDesign
 };
