@@ -66,14 +66,15 @@ public class CrackPropagationService {
             double len = Math.hypot(
                     segments.get(i)[1][0] - segments.get(i)[0][0],
                     segments.get(i)[1][1] - segments.get(i)[0][1]);
-            growthRates[i] = 0.000001 * (0.5 + len * 0.1) * (0.7 + rng.nextDouble() * 0.6);
+            growthRates[i] = 1e-7 * (0.5 + len * 0.1) * (0.7 + rng.nextDouble() * 0.6);
         }
 
-        long recordInterval = Math.max(1, totalSteps / 100);
         List<Map<String, Object>> widthHistory = new ArrayList<>();
         int timeSteps = 100;
         double dt = simulationHours / timeSteps;
         double stepsPerHour = stepFrequency * 60.0;
+        double parisExponent = 1.5;
+        double loadAmplitude = 700.0;
 
         for (int t = 0; t <= timeSteps; t++) {
             double hour = t * dt;
@@ -81,10 +82,11 @@ public class CrackPropagationService {
             double maxWidth = 0.0;
             for (int i = 0; i < segCount; i++) {
                 long stepsAtTime = (long) (stepsPerHour * hour);
-                double fatigueFactor = 1.0 + 0.0005 * Math.sqrt(Math.max(0, stepsAtTime));
-                double growth = growthRates[i] * fatigueFactor * hour * 1000.0;
-                widths[i] = Math.max(initialCrackWidthMm * 0.5, initialCrackWidthMm + growth);
-                widths[i] += rng.nextGaussian() * 0.01;
+                if (stepsAtTime > 0) {
+                    double deltaK = loadAmplitude * Math.sqrt(Math.PI * widths[i] * 0.001);
+                    double parisGrowth = growthRates[i] * Math.pow(deltaK, parisExponent) * stepsAtTime * 1e-6;
+                    widths[i] = Math.max(initialCrackWidthMm * 0.5, initialCrackWidthMm + parisGrowth);
+                }
                 avgWidth += widths[i];
                 if (widths[i] > maxWidth) maxWidth = widths[i];
             }
@@ -125,10 +127,12 @@ public class CrackPropagationService {
         }
 
         double widthRatio = finalAvgWidth / Math.max(0.0001, initialCrackWidthMm);
+        double criticalWidthMm = 15.0;
+        double criticalSteps = 100000.0;
         double damageIndex = Math.min(1.0,
                 0.4 * Math.max(0, (widthRatio - 1.0))
-                        + 0.3 * Math.min(1.0, finalMaxWidth / 15.0)
-                        + 0.3 * Math.min(1.0, totalSteps / 100000.0));
+                        + 0.3 * Math.min(1.0, finalMaxWidth / criticalWidthMm)
+                        + 0.3 * Math.min(1.0, totalSteps / criticalSteps));
 
         CrackPropagation entity = new CrackPropagation();
         if (pavement != null) entity.setPavement(pavement);

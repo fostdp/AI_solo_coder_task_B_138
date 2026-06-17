@@ -44,7 +44,9 @@ public class DrainageSimulationService {
                 ? pavement.getPavementStyle()
                 : Pavement.PavementStyle.ICE_CRACK;
         if (style == Pavement.PavementStyle.PERMEABLE_BRICK) {
-            basePermeability *= 5.0;
+            basePermeability = Math.max(
+                    props.getPermeableBrickMinInfiltration(),
+                    basePermeability * props.getPermeableBrickMultiplier());
         }
 
         int gridRes = request.getGridResolution() != null ? request.getGridResolution() : 20;

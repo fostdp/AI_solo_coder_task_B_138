@@ -528,18 +528,35 @@ function initUserDesignCanvas() {
     let startPoint = null;
     window._userDesignSegments = window._userDesignSegments || [];
 
+    function resizeCanvas() {
+        const wrap = canvas.parentElement;
+        if (!wrap) return;
+        const size = Math.min(wrap.clientWidth, 400);
+        canvas.width = size;
+        canvas.height = size;
+        canvas.style.width = size + 'px';
+        canvas.style.height = size + 'px';
+        redraw();
+    }
+
+    function updateSegmentCount() {
+        const el = document.getElementById('segment-count');
+        if (el) el.textContent = window._userDesignSegments.length;
+    }
+
     function redraw() {
         ctx.fillStyle = '#e8dfc8';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = '#b5a57f';
-        ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
+        ctx.strokeStyle = '#d4c9a8';
+        ctx.lineWidth = 0.5;
+        const gridSize = canvas.width / 10;
+        for (let x = 0; x <= canvas.width; x += gridSize) {
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, canvas.height);
             ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += 40) {
+        for (let y = 0; y <= canvas.height; y += gridSize) {
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(canvas.width, y);
@@ -547,15 +564,49 @@ function initUserDesignCanvas() {
         }
         ctx.strokeStyle = '#2a2520';
         ctx.lineWidth = 1.5;
-        for (const seg of window._userDesignSegments) {
+        for (let i = 0; i < window._userDesignSegments.length; i++) {
+            const seg = window._userDesignSegments[i];
             const sx = (seg[0][0] / 10) * canvas.width;
             const sy = (seg[0][1] / 10) * canvas.height;
             const ex = (seg[1][0] / 10) * canvas.width;
             const ey = (seg[1][1] / 10) * canvas.height;
+            ctx.strokeStyle = '#2a2520';
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.moveTo(sx, sy);
             ctx.lineTo(ex, ey);
             ctx.stroke();
+            if (i === window._userDesignSegments.length - 1) {
+                ctx.fillStyle = '#5ba88c';
+                ctx.beginPath();
+                ctx.arc(ex, ey, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        updateSegmentCount();
+    }
+
+    function drawPreview(p) {
+        if (!startPoint) return;
+        ctx.strokeStyle = 'rgba(42,37,32,0.4)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        const sx = (startPoint.x / 10) * canvas.width;
+        const sy = (startPoint.y / 10) * canvas.height;
+        const ex = (p.x / 10) * canvas.width;
+        const ey = (p.y / 10) * canvas.height;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        const dx = p.x - startPoint.x;
+        const dy = p.y - startPoint.y;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len > 0.2) {
+            ctx.fillStyle = 'rgba(91,168,140,0.8)';
+            ctx.font = '11px sans-serif';
+            ctx.fillText(len.toFixed(2) + 'm', (sx + ex) / 2 + 4, (sy + ey) / 2 - 4);
         }
     }
 
@@ -573,24 +624,14 @@ function initUserDesignCanvas() {
     canvas.addEventListener('mousemove', (e) => {
         if (!drawing || !startPoint) return;
         redraw();
-        const p = pos(e);
-        ctx.strokeStyle = '#2a2520';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        const sx = (startPoint.x / 10) * canvas.width;
-        const sy = (startPoint.y / 10) * canvas.height;
-        const ex = (p.x / 10) * canvas.width;
-        const ey = (p.y / 10) * canvas.height;
-        ctx.moveTo(sx, sy);
-        ctx.lineTo(ex, ey);
-        ctx.stroke();
+        drawPreview(pos(e));
     });
     canvas.addEventListener('mouseup', (e) => {
         if (!drawing || !startPoint) return;
         const p = pos(e);
         const dx = p.x - startPoint.x;
         const dy = p.y - startPoint.y;
-        if (Math.sqrt(dx * dx + dy * dy) > 0.1) {
+        if (Math.sqrt(dx * dx + dy * dy) > 0.3) {
             window._userDesignSegments.push([[startPoint.x, startPoint.y], [p.x, p.y]]);
         }
         drawing = false;
@@ -611,17 +652,7 @@ function initUserDesignCanvas() {
         e.preventDefault();
         if (!drawing || !startPoint) return;
         redraw();
-        const p = pos(e);
-        ctx.strokeStyle = '#2a2520';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        const sx = (startPoint.x / 10) * canvas.width;
-        const sy = (startPoint.y / 10) * canvas.height;
-        const ex = (p.x / 10) * canvas.width;
-        const ey = (p.y / 10) * canvas.height;
-        ctx.moveTo(sx, sy);
-        ctx.lineTo(ex, ey);
-        ctx.stroke();
+        drawPreview(pos(e));
     });
     canvas.addEventListener('touchend', (e) => {
         if (!drawing || !startPoint) return;
@@ -632,7 +663,7 @@ function initUserDesignCanvas() {
         const p = { x: (cx / canvas.width) * 10, y: (cy / canvas.height) * 10 };
         const dx = p.x - startPoint.x;
         const dy = p.y - startPoint.y;
-        if (Math.sqrt(dx * dx + dy * dy) > 0.1) {
+        if (Math.sqrt(dx * dx + dy * dy) > 0.3) {
             window._userDesignSegments.push([[startPoint.x, startPoint.y], [p.x, p.y]]);
         }
         drawing = false;
@@ -648,6 +679,14 @@ function initUserDesignCanvas() {
         });
     }
 
+    const undoBtn = document.getElementById('undo-design');
+    if (undoBtn) {
+        undoBtn.addEventListener('click', () => {
+            window._userDesignSegments.pop();
+            redraw();
+        });
+    }
+
     const randBtn = document.getElementById('random-design');
     if (randBtn) {
         randBtn.addEventListener('click', () => {
@@ -658,5 +697,6 @@ function initUserDesignCanvas() {
         });
     }
 
-    redraw();
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
 }

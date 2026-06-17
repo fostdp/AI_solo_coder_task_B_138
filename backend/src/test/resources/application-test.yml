@@ -27,6 +27,8 @@ drainage:
   crack-depth-enhance-divisor: 5.0
   slope-vertical-reduction: 0.5
   cfl-factor: 0.5
+  permeable-brick-min-infiltration: 0.0001
+  permeable-brick-multiplier: 3.0
 
 aesthetic:
   box-count-min-scale: 2

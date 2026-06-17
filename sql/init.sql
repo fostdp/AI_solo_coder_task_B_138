@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS pavement (
     crack_pattern JSONB,
     pavement_style VARCHAR(30) DEFAULT 'ICE_CRACK',
     era VARCHAR(20) DEFAULT 'ANCIENT',
+    measurement_source VARCHAR(100),
+    measured_at TIMESTAMP WITH TIME ZONE,
+    permeability_test_method VARCHAR(100),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -85,30 +88,30 @@ CREATE INDEX idx_alert_pavement ON alert(pavement_id);
 CREATE INDEX idx_alert_time ON alert(created_at DESC);
 CREATE INDEX idx_alert_unack ON alert(acknowledged) WHERE acknowledged = FALSE;
 
-INSERT INTO pavement (id, name, location, area_length, area_width, slope_angle, base_permeability, crack_pattern, pavement_style, era) VALUES
+INSERT INTO pavement (id, name, location, area_length, area_width, slope_angle, base_permeability, crack_pattern, pavement_style, era, measurement_source, permeability_test_method) VALUES
 ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', '拙政园远香堂前铺地', '苏州市姑苏区拙政园远香堂', 12.0, 8.0, 1.5, 0.0008,
- '{"seed": 42, "type": "hexagonal_ice", "segments": 35, "irregularity": 0.7}', 'ICE_CRACK', 'ANCIENT'),
+ '{"seed": 42, "type": "hexagonal_ice", "segments": 35, "irregularity": 0.7}', 'ICE_CRACK', 'ANCIENT', '文献估算', '参照《苏州古典园林铺地工艺》'),
 
 ('b2c3d4e5-f6a7-8901-bcde-f12345678901', '留园涵碧山房铺地', '苏州市姑苏区留园涵碧山房', 10.0, 6.0, 2.0, 0.0012,
- '{"seed": 137, "type": "radial_ice", "segments": 28, "irregularity": 0.5}', 'ICE_CRACK', 'ANCIENT'),
+ '{"seed": 137, "type": "radial_ice", "segments": 28, "irregularity": 0.5}', 'ICE_CRACK', 'ANCIENT', '文献估算', '参照《苏州古典园林铺地工艺》'),
 
 ('c3d4e5f6-a7b8-9012-cdef-123456789012', '网师园殿春簃铺地', '苏州市姑苏区网师园殿春簃', 8.0, 5.0, 2.5, 0.0015,
- '{"seed": 256, "type": "organic_ice", "segments": 42, "irregularity": 0.85}', 'ICE_CRACK', 'ANCIENT'),
+ '{"seed": 256, "type": "organic_ice", "segments": 42, "irregularity": 0.85}', 'ICE_CRACK', 'ANCIENT', '文献估算', '参照《苏州古典园林铺地工艺》'),
 
 ('d4e5f6a7-b8c9-0123-defa-234567890123', '沧浪亭面水轩铺地', '苏州市姑苏区沧浪亭面水轩', 9.0, 7.0, 1.8, 0.0010,
- '{"seed": 512, "type": "angular_ice", "segments": 30, "irregularity": 0.6}', 'ICE_CRACK', 'ANCIENT'),
+ '{"seed": 512, "type": "angular_ice", "segments": 30, "irregularity": 0.6}', 'ICE_CRACK', 'ANCIENT', '文献估算', '参照《苏州古典园林铺地工艺》'),
 
 ('e5f6a7b8-c9d0-1234-efab-345678901234', '狮子林立雪堂铺地', '苏州市姑苏区狮子林立雪堂', 11.0, 9.0, 1.2, 0.0006,
- '{"seed": 1024, "type": "mixed_ice", "segments": 50, "irregularity": 0.9}', 'ICE_CRACK', 'ANCIENT'),
+ '{"seed": 1024, "type": "mixed_ice", "segments": 50, "irregularity": 0.9}', 'ICE_CRACK', 'ANCIENT', '文献估算', '参照《苏州古典园林铺地工艺》'),
 
 ('f6a7b8c9-d0e1-2345-fabc-456789012345', '艺圃延光阁人字纹铺地', '苏州市姑苏区艺圃延光阁', 10.0, 8.0, 2.0, 0.0010,
- '{"seed": 2048, "type": "herringbone", "spacing": 0.4, "angle": 45, "irregularity": 0.15}', 'HERRINGBONE', 'ANCIENT'),
+ '{"seed": 2048, "type": "herringbone", "spacing": 0.4, "angle": 45, "irregularity": 0.15}', 'HERRINGBONE', 'ANCIENT', '文献估算', '参照《苏州古典园林铺地工艺》'),
 
 ('0fabcde1-2345-6789-abcd-567890123456', '耦园载酒堂席纹铺地', '苏州市姑苏区耦园载酒堂', 9.0, 7.0, 1.5, 0.0009,
- '{"seed": 4096, "type": "basketweave", "tileWidth": 0.5, "tileHeight": 0.25, "irregularity": 0.1}', 'BASKETWEAVE', 'ANCIENT'),
+ '{"seed": 4096, "type": "basketweave", "tileWidth": 0.5, "tileHeight": 0.25, "irregularity": 0.1}', 'BASKETWEAVE', 'ANCIENT', '文献估算', '参照《苏州古典园林铺地工艺》'),
 
 ('1bcdefa2-3456-7890-bcde-678901234567', '现代生态透水砖示范段', '苏州园林博物馆示范区', 10.0, 8.0, 2.0, 0.008,
- '{"seed": 8192, "type": "permeable_brick", "brickSize": 0.2, "gapWidth": 0.015, "porosity": 0.18}', 'PERMEABLE_BRICK', 'MODERN');
+ '{"seed": 8192, "type": "permeable_brick", "brickSize": 0.2, "gapWidth": 0.015, "porosity": 0.18}', 'PERMEABLE_BRICK', 'MODERN', '实验室检测', 'GB/T 25993-2010 双环渗透试验');
 
 CREATE TABLE IF NOT EXISTS style_comparison (
     id BIGSERIAL PRIMARY KEY,

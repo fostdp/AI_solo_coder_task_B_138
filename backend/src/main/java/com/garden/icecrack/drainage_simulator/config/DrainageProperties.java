@@ -21,4 +21,6 @@ public class DrainageProperties {
     private double crackDepthEnhanceDivisor = 5.0;
     private double slopeVerticalReduction = 0.5;
     private double cflFactor = 0.5;
+    private double permeableBrickMinInfiltration = 0.0001;
+    private double permeableBrickMultiplier = 3.0;
 }

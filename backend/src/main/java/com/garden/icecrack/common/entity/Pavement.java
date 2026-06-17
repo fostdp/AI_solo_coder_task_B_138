@@ -57,6 +57,15 @@ public class Pavement {
     @Enumerated(jakarta.persistence.EnumType.STRING)
     private Era era = Era.ANCIENT;
 
+    @Column(name = "measurement_source")
+    private String measurementSource;
+
+    @Column(name = "measured_at")
+    private LocalDateTime measuredAt;
+
+    @Column(name = "permeability_test_method")
+    private String permeabilityTestMethod;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
