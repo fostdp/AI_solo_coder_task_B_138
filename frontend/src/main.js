@@ -3,6 +3,10 @@ import { AestheticsPanel } from './aesthetics_panel.js';
 import * as api from './api.js';
 import { AlertWebSocket } from './websocket.js';
 import { DashboardCharts } from './charts.js';
+import { initPatternComparator } from './pattern_comparator.js';
+import { initEraComparator } from './era_comparator.js';
+import { initPedestrianSimulator } from './pedestrian_simulator.js';
+import { initVrPavingDesigner } from './vr_paving_designer.js';
 
 let scene = null;
 let aestheticsPanel = null;
@@ -410,6 +414,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     initUserDesignCanvas();
+
+    initPatternComparator(pavements, scene);
+    initEraComparator(pavements, scene);
+    initPedestrianSimulator(pavements, scene);
+    initVrPavingDesigner(scene);
 
     loadAlerts();
 });

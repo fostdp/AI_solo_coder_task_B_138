@@ -168,6 +168,76 @@ async function fetchUserDesign(id) {
   return res.json();
 }
 
+async function patternCompare(pavementIds, params = {}) {
+  const res = await fetch(`${API_BASE}/pattern-comparison/compare`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pavementIds, ...params })
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchPatternComparisonHistory() {
+  const res = await fetch(`${API_BASE}/pattern-comparison/history`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function eraCompare(pavementIds, params = {}) {
+  const res = await fetch(`${API_BASE}/era-comparison/compare`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pavementIds, ...params })
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchEraComparisonHistory() {
+  const res = await fetch(`${API_BASE}/era-comparison/history`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function simulatePedestrianImpact(params) {
+  const res = await fetch(`${API_BASE}/pedestrian-simulator/simulate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params)
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchPedestrianSimHistory(pavementId) {
+  const res = await fetch(`${API_BASE}/pedestrian-simulator/${pavementId}/history`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function submitVrDesign(params) {
+  const res = await fetch(`${API_BASE}/vr-paving-designer/submit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params)
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchVrDesignsBySession(sessionId) {
+  const res = await fetch(`${API_BASE}/vr-paving-designer/session/${sessionId}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchVrDesign(id) {
+  const res = await fetch(`${API_BASE}/vr-paving-designer/${id}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 export {
   API_BASE,
   fetchPavements,
@@ -191,5 +261,14 @@ export {
   fetchCrackPropagationHistory,
   submitUserDesign,
   fetchUserDesignsBySession,
-  fetchUserDesign
+  fetchUserDesign,
+  patternCompare,
+  fetchPatternComparisonHistory,
+  eraCompare,
+  fetchEraComparisonHistory,
+  simulatePedestrianImpact,
+  fetchPedestrianSimHistory,
+  submitVrDesign,
+  fetchVrDesignsBySession,
+  fetchVrDesign
 };

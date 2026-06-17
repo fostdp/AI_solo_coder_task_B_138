@@ -154,3 +154,15 @@ CREATE TABLE IF NOT EXISTS user_pavement_design (
 CREATE INDEX IF NOT EXISTS idx_comparison_time ON style_comparison(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_crack_prop_pavement ON crack_propagation(pavement_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_design_session ON user_pavement_design(user_session_id);
+
+CREATE TABLE IF NOT EXISTS era_comparison (
+    id BIGSERIAL PRIMARY KEY,
+    comparison_type VARCHAR(20) DEFAULT 'ERA',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    pavement_ids JSONB,
+    ancient_results JSONB,
+    modern_results JSONB,
+    summary TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_era_comparison_time ON era_comparison(created_at DESC);

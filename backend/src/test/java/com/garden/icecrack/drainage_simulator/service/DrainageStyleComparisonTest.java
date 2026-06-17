@@ -12,7 +12,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -20,6 +19,8 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,7 +38,7 @@ class DrainageStyleComparisonTest {
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
     @Spy private DrainageProperties props = new DrainageProperties();
 
-    @InjectMocks private DrainageSimulationService service;
+    private DrainageSimulationService service;
 
     private UUID iceId;
     private UUID brickId;
@@ -48,6 +49,8 @@ class DrainageStyleComparisonTest {
         iceId = UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
         brickId = UUID.fromString("1bcdefa2-3456-7890-bcde-678901234567");
         herrId = UUID.fromString("f6a7b8c9-d0e1-2345-fabc-456789012345");
+        Executor directExecutor = Runnable::run;
+        service = new DrainageSimulationService(resultRepo, pavementRepo, eventPublisher, objectMapper, props, directExecutor);
     }
 
     private Pavement makePavement(UUID id, Pavement.PavementStyle style, double permeability) {
